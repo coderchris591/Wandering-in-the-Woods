@@ -62,7 +62,7 @@ running = True
 font = pygame.font.SysFont(None, 55)
 controls_font = pygame.font.SysFont(None, 30)
 found_each_other = False
-move_count = 0
+move_count, oldX, oldY = 0, 0, 0
 groups = [[player] for player in players]  # Initialize each player in their own group
 
 while running:
@@ -77,6 +77,7 @@ while running:
     # Get key states
     keys = pygame.key.get_pressed()
     for group in groups:
+        playersInGroup = 1 # Tracks number of players in a group
         if config.random_movement:
             # Random movement for K-2
             dx, dy = random.choice([-1, 1]), random.choice([-1, 1])
@@ -97,8 +98,15 @@ while running:
             elif keys[leader["keys"][3]] and leader["pos"][0] < GRID_WIDTH - 1:
                 dx = 1
             for player in group:
+                oldX, oldY = player["pos"][0], player["pos"][1] # Saves current placement of x,y
                 player["pos"][0] = max(0, min(player["pos"][0] + dx, GRID_WIDTH - 1))
                 player["pos"][1] = max(0, min(player["pos"][1] + dy, GRID_HEIGHT - 1))
+                if oldX != player["pos"][0] or oldY != player["pos"][1]: # Compares old placement to new one
+                    move_count += 1
+                    if playersInGroup > 1: move_count -= 1 # Negates multiples steps from groups that have players > 1
+                playersInGroup += 1 
+                
+
     
     # Merge groups if they find each other
     new_groups = []
@@ -170,7 +178,8 @@ while running:
         if not found_each_other:
             win_sound.play()
             found_each_other = True
-        text = font.render("You found each other!", True, BLACK)
+        text_string = (f"You found each other! Move Count: {move_count}")
+        text = font.render(text_string, True, BLACK)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         background_rect = text_rect.inflate(20, 20)
         pygame.draw.rect(screen, WHITE, background_rect)
