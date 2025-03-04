@@ -62,8 +62,9 @@ running = True
 font = pygame.font.SysFont(None, 55)
 controls_font = pygame.font.SysFont(None, 30)
 found_each_other = False
-move_count = 0
+move_count, oldX, oldY = 0, 0, 0
 groups = [[player] for player in players]  # Initialize each player in their own group
+K2_Step = 0
 
 while running:
     screen.fill(BLACK)
@@ -76,14 +77,37 @@ while running:
     
     # Get key states
     keys = pygame.key.get_pressed()
+    K2_Player = 1
+
     for group in groups:
+        playersInGroup = 1 # Tracks number of players in a group
         if config.random_movement:
             # Random movement for K-2
             dx, dy = random.choice([-1, 1]), random.choice([-1, 1])
             sleep(1)
+            
             for player in group:
-                player["pos"][0] = max(0, min(player["pos"][0] + dx, GRID_WIDTH - 1))
-                player["pos"][1] = max(0, min(player["pos"][1] + dy, GRID_HEIGHT - 1))
+                if K2_Player == 2 and (K2_Step > 10):
+                    oldX, oldY = player["pos"][0], player["pos"][1] # Saves current placement of x,y
+                    if players[0]["pos"][0] > player["pos"][0]:
+                        player["pos"][0] = max(0, min(player["pos"][0] + 1, GRID_WIDTH - 1))   
+                    elif players[0]["pos"][0] < player["pos"][0]:    
+                        player["pos"][0] = max(0, min(player["pos"][0] - 1, GRID_WIDTH - 1))
+                    if players[0]["pos"][1] > player["pos"][1]:
+                        player["pos"][1] = max(0, min(player["pos"][1] + 1, GRID_HEIGHT - 1))
+                    elif players[0]["pos"][1] < player["pos"][1]:   
+                        player["pos"][1] = max(0, min(player["pos"][1] - 1, GRID_HEIGHT - 1))
+                    if oldX != player["pos"][0] or oldY != player["pos"][1]: # Compares old placement to new one
+                        move_count += 1
+                    K2_Player = 1
+                else:    
+                    oldX, oldY = player["pos"][0], player["pos"][1] # Saves current placement of x,y
+                    player["pos"][0] = max(0, min(player["pos"][0] + dx, GRID_WIDTH - 1))
+                    player["pos"][1] = max(0, min(player["pos"][1] + dy, GRID_HEIGHT - 1))
+                    if oldX != player["pos"][0] or oldY != player["pos"][1]: # Compares old placement to new one
+                        move_count += 1
+                    K2_Player = 2
+            if K2_Step <= 10: K2_Step += 1
         else:
             # Controlled movement for 3-5 and 6-8
             leader = group[0]
@@ -97,8 +121,15 @@ while running:
             elif keys[leader["keys"][3]] and leader["pos"][0] < GRID_WIDTH - 1:
                 dx = 1
             for player in group:
+                oldX, oldY = player["pos"][0], player["pos"][1] # Saves current placement of x,y
                 player["pos"][0] = max(0, min(player["pos"][0] + dx, GRID_WIDTH - 1))
                 player["pos"][1] = max(0, min(player["pos"][1] + dy, GRID_HEIGHT - 1))
+                if oldX != player["pos"][0] or oldY != player["pos"][1]: # Compares old placement to new one
+                    move_count += 1
+                    if playersInGroup > 1: move_count -= 1 # Negates multiples steps from groups that have players > 1
+                playersInGroup += 1 
+                
+
     
     # Merge groups if they find each other
     new_groups = []
@@ -170,7 +201,8 @@ while running:
         if not found_each_other:
             win_sound.play()
             found_each_other = True
-        text = font.render("You found each other!", True, BLACK)
+        text_string = (f"You found each other! Move Count: {move_count}")
+        text = font.render(text_string, True, BLACK)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         background_rect = text_rect.inflate(20, 20)
         pygame.draw.rect(screen, WHITE, background_rect)
