@@ -52,13 +52,6 @@ forest_background = pygame.transform.scale(forest_background, (view_width, view_
 def reset_game():
     global mode, config, players, groups, found_each_other, move_count, K2_Step
 
-    # # Select mode again
-    # mode = main_menu()
-    # config = Config(mode)
-    #
-    # # Setup game for modes 3-5 and 6-8
-    # setup_game(config)
-
     # Reset player positions
     # Players (x, y, color)
     players = [
@@ -231,7 +224,7 @@ while running:
         screen.blit(text, text_rect)
 
         if pygame.time.get_ticks() - win_time > 3000:
-            reset_game()  # Reset game **after** showing message for 3 seconds
+            reset_game()  # Reset game after showing message for 3 seconds
             win_time = None  # Reset win_time tracker
             found_each_other = False  # Reset game state
 
