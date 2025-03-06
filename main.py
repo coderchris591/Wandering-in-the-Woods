@@ -201,12 +201,28 @@ while running:
         if not found_each_other:
             win_sound.play()
             found_each_other = True
-        text_string = (f"You found each other! Move Count: {move_count}")
-        text = font.render(text_string, True, BLACK)
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-        background_rect = text_rect.inflate(20, 20)
-        pygame.draw.rect(screen, WHITE, background_rect)
-        screen.blit(text, text_rect)
+        text_lines = [
+            "You found each other!",
+            f"Move Count: {move_count}",
+            "Press any key to exit"
+        ]
+        y_offset = HEIGHT // 2 - 40
+        for line in text_lines:
+            text = font.render(line, True, BLACK)
+            text_rect = text.get_rect(center=(WIDTH // 2, y_offset))
+            background_rect = text_rect.inflate(20, 20)
+            pygame.draw.rect(screen, WHITE, background_rect)
+            screen.blit(text, text_rect)
+            y_offset += 60
+        
+        pygame.display.flip()
+        paused = True
+        while paused:
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    paused = False
+        running = False
+
     
     pygame.display.flip()
     pygame.time.delay(100)
