@@ -55,6 +55,7 @@ def setup_game(config):
     input_active = False
     input_text = ""
     step = 0
+    error_message = ""
 
     # Load background image
     background_image = pygame.image.load('menu_background.jpg')
@@ -72,6 +73,8 @@ def setup_game(config):
             draw_text(screen, f"Enter Start Position for Player {step - 2} (x,y):", font, (255, 255, 255), (400, 100))
 
         draw_text(screen, input_text, small_font, (255, 255, 255), (400, 300))
+        if error_message:
+            draw_text(screen, error_message, small_font, (255, 0, 0), (400, 350))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -79,26 +82,33 @@ def setup_game(config):
                 exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
-                    try:
-                        if step == 0:
-                            config.set_grid_size(int(input_text), config.grid_size[1])
-                        elif step == 1:
-                            config.set_grid_size(config.grid_size[0], int(input_text))
-                        elif step == 2:
-                            num_players = int(input_text)
-                            if num_players < 2 or num_players > 4:
-                                raise ValueError("Number of players must be between 2 and 4.")
-                            config.set_num_players(num_players)
-                            config.start_positions = [(0, 0)] * config.num_players  # Initialize start positions
-                        else:
-                            x, y = map(int, input_text.split(','))
-                            config.start_positions[step - 3] = (x, y)
-                        input_text = ""
-                        step += 1
-                        if step >= 3 + config.num_players:
-                            return
-                    except ValueError as e:
-                        input_text = f"Error: {e}"
+                    if input_text.strip():
+                        try:
+                            if step == 0:
+                                config.set_grid_size(int(input_text), config.grid_size[1])
+                            elif step == 1:
+                                config.set_grid_size(config.grid_size[0], int(input_text))
+                            elif step == 2:
+                                num_players = int(input_text)
+                                if num_players < 2 or num_players > 4:
+                                    raise ValueError("Number of players must be between 2 and 4.")
+                                config.set_num_players(num_players)
+                                config.start_positions = [(0, 0)] * config.num_players  # Initialize start positions
+                            else:
+                                x, y = map(int, input_text.split(','))
+                                if step - 3 < config.num_players:
+                                    config.start_positions[step - 3] = (x, y)
+                                else:
+                                    raise ValueError("Too many start positions entered.")
+
+                            input_text = ""
+                            error_message = ""
+                            step += 1
+                            if step >= 3 + config.num_players:
+                                return
+                        except ValueError as e:
+                            error_message = f"Invalid input: {e}"
+                            input_text = ""
                 elif event.key == pygame.K_BACKSPACE:
                     input_text = input_text[:-1]
                 else:

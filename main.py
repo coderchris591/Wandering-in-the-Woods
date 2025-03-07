@@ -42,14 +42,6 @@ screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 WIDTH, HEIGHT = screen.get_size()
 pygame.display.set_caption("Split-Screen Wandering")
 
-# Players (x, y, color)
-players = [
-    {"pos": list(pos), "color": PLAYER_COLORS[i], "keys": [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d], "controls": "WASD"} if i == 0 else
-    {"pos": list(pos), "color": PLAYER_COLORS[i], "keys": [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT], "controls": "Arrow Keys"} if i == 1 else
-    {"pos": list(pos), "color": PLAYER_COLORS[i], "keys": [pygame.K_i, pygame.K_k, pygame.K_j, pygame.K_l], "controls": "IJKL"} if i == 2 else
-    {"pos": list(pos), "color": PLAYER_COLORS[i], "keys": [pygame.K_t, pygame.K_g, pygame.K_f, pygame.K_h], "controls": "TFGH"} for i, pos in enumerate(config.start_positions)
-]
-
 # Load sound
 win_sound = pygame.mixer.Sound(config.win_sound)
 
@@ -57,24 +49,46 @@ win_sound = pygame.mixer.Sound(config.win_sound)
 forest_background = pygame.image.load(config.background_image)
 forest_background = pygame.transform.scale(forest_background, (view_width, view_height))
 
+def reset_game():
+    global mode, config, players, groups, found_each_other, move_count, K2_Step
+
+    # Reset player positions
+    # Players (x, y, color)
+    players = [
+        {"pos": list(pos), "color": PLAYER_COLORS[i], "keys": [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d],
+         "controls": "WASD"} if i == 0 else
+        {"pos": list(pos), "color": PLAYER_COLORS[i],
+         "keys": [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT], "controls": "Arrow Keys"} if i == 1 else
+        {"pos": list(pos), "color": PLAYER_COLORS[i], "keys": [pygame.K_i, pygame.K_k, pygame.K_j, pygame.K_l],
+         "controls": "IJKL"} if i == 2 else
+        {"pos": list(pos), "color": PLAYER_COLORS[i], "keys": [pygame.K_t, pygame.K_g, pygame.K_f, pygame.K_h],
+         "controls": "TFGH"} for i, pos in enumerate(config.start_positions)
+    ]
+
+    # Reset game variables
+    groups = [[player] for player in players]
+    found_each_other = False
+    move_count = 0
+    K2_Step = 0
+    return players, groups, found_each_other, move_count, K2_Step
+
+players, groups, found_each_other, move_count, K2_Step = reset_game()
+
 # Game loop
 running = True
 font = pygame.font.SysFont(None, 55)
 controls_font = pygame.font.SysFont(None, 30)
-found_each_other = False
-move_count, oldX, oldY = 0, 0, 0
-groups = [[player] for player in players]  # Initialize each player in their own group
-K2_Step = 0
+win_time = None
 
 while running:
     screen.fill(BLACK)
-    
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             running = False
-    
+
     # Get key states
     keys = pygame.key.get_pressed()
     K2_Player = 1
@@ -85,22 +99,22 @@ while running:
             # Random movement for K-2
             dx, dy = random.choice([-1, 1]), random.choice([-1, 1])
             sleep(1)
-            
+
             for player in group:
                 if K2_Player == 2 and (K2_Step > 10):
                     oldX, oldY = player["pos"][0], player["pos"][1] # Saves current placement of x,y
                     if players[0]["pos"][0] > player["pos"][0]:
-                        player["pos"][0] = max(0, min(player["pos"][0] + 1, GRID_WIDTH - 1))   
-                    elif players[0]["pos"][0] < player["pos"][0]:    
+                        player["pos"][0] = max(0, min(player["pos"][0] + 1, GRID_WIDTH - 1))
+                    elif players[0]["pos"][0] < player["pos"][0]:
                         player["pos"][0] = max(0, min(player["pos"][0] - 1, GRID_WIDTH - 1))
                     if players[0]["pos"][1] > player["pos"][1]:
                         player["pos"][1] = max(0, min(player["pos"][1] + 1, GRID_HEIGHT - 1))
-                    elif players[0]["pos"][1] < player["pos"][1]:   
+                    elif players[0]["pos"][1] < player["pos"][1]:
                         player["pos"][1] = max(0, min(player["pos"][1] - 1, GRID_HEIGHT - 1))
                     if oldX != player["pos"][0] or oldY != player["pos"][1]: # Compares old placement to new one
                         move_count += 1
                     K2_Player = 1
-                else:    
+                else:
                     oldX, oldY = player["pos"][0], player["pos"][1] # Saves current placement of x,y
                     player["pos"][0] = max(0, min(player["pos"][0] + dx, GRID_WIDTH - 1))
                     player["pos"][1] = max(0, min(player["pos"][1] + dy, GRID_HEIGHT - 1))
@@ -127,10 +141,10 @@ while running:
                 if oldX != player["pos"][0] or oldY != player["pos"][1]: # Compares old placement to new one
                     move_count += 1
                     if playersInGroup > 1: move_count -= 1 # Negates multiples steps from groups that have players > 1
-                playersInGroup += 1 
-                
+                playersInGroup += 1
 
-    
+
+
     # Merge groups if they find each other
     new_groups = []
     while groups:
@@ -195,20 +209,29 @@ while running:
     # Draw dividing lines
     pygame.draw.line(screen, BLACK, (WIDTH // 2, 0), (WIDTH // 2, HEIGHT), 2)
     pygame.draw.line(screen, BLACK, (0, HEIGHT // 2), (WIDTH, HEIGHT // 2), 2)
-    
+
     # Check if all players found each other
     if len(groups) == 1 and len(groups[0]) == config.num_players:
         if not found_each_other:
             win_sound.play()
             found_each_other = True
+            win_time = pygame.time.get_ticks()
         text_string = (f"You found each other! Move Count: {move_count}")
         text = font.render(text_string, True, BLACK)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         background_rect = text_rect.inflate(20, 20)
         pygame.draw.rect(screen, WHITE, background_rect)
         screen.blit(text, text_rect)
-    
+
+        if pygame.time.get_ticks() - win_time > 3000:
+            reset_game()  # Reset game after showing message for 3 seconds
+            win_time = None  # Reset win_time tracker
+            found_each_other = False  # Reset game state
+
     pygame.display.flip()
     pygame.time.delay(100)
 
 pygame.quit()
+
+
+
