@@ -50,7 +50,7 @@ forest_background = pygame.image.load(config.background_image)
 forest_background = pygame.transform.scale(forest_background, (view_width, view_height))
 
 def reset_game():
-    global mode, config, players, groups, found_each_other, move_count, K2_Step
+    global mode, config, players, groups, found_each_other, move_count, K2_Step, K2_First_Move
 
     # Reset player positions
     # Players (x, y, color)
@@ -70,15 +70,57 @@ def reset_game():
     found_each_other = False
     move_count = 0
     K2_Step = 0
-    return players, groups, found_each_other, move_count, K2_Step
+    K2_First_Move = True # Negates the first move_count since it is not visually represented to the user
+    return players, groups, found_each_other, move_count, K2_Step, K2_First_Move
 
-players, groups, found_each_other, move_count, K2_Step = reset_game()
+players, groups, found_each_other, move_count, K2_Step, K2_First_Move = reset_game()
+
+# Shows results with option to play again and returns updated steps_lowest/steps_highest/average_steps
+def results(steps: int,low: int, high: int, average: int, games_played: int, total_steps: int):
+    Continue = False
+    while Continue is False:
+        screen.fill(BLACK)
+        average = total_steps/games_played
+        current_steps = steps
+        if steps < low: low = steps
+        if steps > high: high = steps 
+        text_lines = [
+            f"Total steps taken last game: {current_steps}",
+            f"Highest steps taken in a game: {high}",
+            f"Lowest steps taken in a game: {low}",
+            f"Average steps per game: {int(average)}",
+            f"Total games played: {games_played}",           
+            "Press 1 to play again or ESC to quit"
+        ]
+        y_offset = HEIGHT // 2 - 40 
+        
+        for line in text_lines:
+            text = font.render(line, True, BLACK)
+            text_rect = text.get_rect(center=(WIDTH // 2, y_offset))
+            background_rect = text_rect.inflate(20, 20)
+            pygame.draw.rect(screen, WHITE, background_rect)
+            screen.blit(text, text_rect)
+            y_offset += 60                   
+
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    return low, high, average, True
+                elif event.key == pygame.K_ESCAPE:
+                    return low, high, average, False
+        pygame.display.flip()
+        pygame.time.delay(60)
 
 # Game loop
 running = True
 font = pygame.font.SysFont(None, 55)
 controls_font = pygame.font.SysFont(None, 30)
 win_time = None
+low_steps = 9999
+high_steps = 0 
+steps_average = 0 
+games_played = 0 
+total_steps = 0
 
 while running:
     screen.fill(BLACK)
@@ -101,6 +143,7 @@ while running:
             sleep(1)
 
             for player in group:
+                # Starts moving Player 2 towards Player 1
                 if K2_Player == 2 and (K2_Step > 10):
                     oldX, oldY = player["pos"][0], player["pos"][1] # Saves current placement of x,y
                     if players[0]["pos"][0] > player["pos"][0]:
@@ -113,6 +156,10 @@ while running:
                         player["pos"][1] = max(0, min(player["pos"][1] - 1, GRID_HEIGHT - 1))
                     if oldX != player["pos"][0] or oldY != player["pos"][1]: # Compares old placement to new one
                         move_count += 1
+                        if K2_First_Move == True:
+                            move_count -= 1
+                        if playersInGroup > 1: move_count -= 1 # Negates multiples steps from groups that have players > 1
+                    playersInGroup += 1
                     K2_Player = 1
                 else:
                     oldX, oldY = player["pos"][0], player["pos"][1] # Saves current placement of x,y
@@ -120,6 +167,10 @@ while running:
                     player["pos"][1] = max(0, min(player["pos"][1] + dy, GRID_HEIGHT - 1))
                     if oldX != player["pos"][0] or oldY != player["pos"][1]: # Compares old placement to new one
                         move_count += 1
+                        if K2_First_Move == True:
+                            move_count -= 1
+                        if playersInGroup > 1: move_count -= 1 # Negates multiples steps from groups that have players > 1
+                    playersInGroup += 1
                     K2_Player = 2
             if K2_Step <= 10: K2_Step += 1
         else:
@@ -142,7 +193,7 @@ while running:
                     move_count += 1
                     if playersInGroup > 1: move_count -= 1 # Negates multiples steps from groups that have players > 1
                 playersInGroup += 1
-
+    K2_First_Move = False
 
 
     # Merge groups if they find each other
@@ -222,11 +273,15 @@ while running:
         background_rect = text_rect.inflate(20, 20)
         pygame.draw.rect(screen, WHITE, background_rect)
         screen.blit(text, text_rect)
-
-        if pygame.time.get_ticks() - win_time > 3000:
-            reset_game()  # Reset game after showing message for 3 seconds
-            win_time = None  # Reset win_time tracker
-            found_each_other = False  # Reset game state
+        pygame.display.flip()
+        pygame.time.delay(3000)
+        # if pygame.time.get_ticks() - win_time > 3000:
+        games_played += 1
+        total_steps += move_count
+        low_steps, high_steps, steps_average, running = results(move_count,low_steps, high_steps, steps_average, games_played, total_steps)
+        reset_game()  # Reset game
+        win_time = None  # Reset win_time tracker
+        found_each_other = False  # Reset game state
 
     pygame.display.flip()
     pygame.time.delay(100)
