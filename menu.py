@@ -13,6 +13,7 @@ def main_menu():
     small_font = pygame.font.SysFont(None, 35)
     clock = pygame.time.Clock()
     selected_mode = None
+    
 
     # Load background image
     background_image = pygame.image.load('menu_background.jpg')

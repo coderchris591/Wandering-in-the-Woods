@@ -42,15 +42,18 @@ screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 WIDTH, HEIGHT = screen.get_size()
 pygame.display.set_caption("Split-Screen Wandering")
 
-# Load sound
+# Load sound and music
 win_sound = pygame.mixer.Sound(config.win_sound)
+music = pygame.mixer.Sound(config.music)
+music.play()
+music.set_volume(0.01)
 
 # Load background image
 forest_background = pygame.image.load(config.background_image)
 forest_background = pygame.transform.scale(forest_background, (view_width, view_height))
 
 def reset_game():
-    global mode, config, players, groups, found_each_other, move_count, K2_Step, K2_First_Move
+    global mode, config, players, groups, found_each_other, move_count, K2_Step, K2_First_Move, win_time
 
     # Reset player positions
     # Players (x, y, color)
@@ -69,16 +72,16 @@ def reset_game():
     groups = [[player] for player in players]
     found_each_other = False
     move_count = 0
+    win_time = pygame.time.get_ticks() 
     K2_Step = 0
     K2_First_Move = True # Negates the first move_count since it is not visually represented to the user
-    return players, groups, found_each_other, move_count, K2_Step, K2_First_Move
+    return players, groups, found_each_other, move_count, K2_Step, K2_First_Move, win_time
 
-players, groups, found_each_other, move_count, K2_Step, K2_First_Move = reset_game()
+players, groups, found_each_other, move_count, K2_Step, K2_First_Move, win_time = reset_game()
 
 # Shows results with option to play again and returns updated steps_lowest/steps_highest/average_steps
-def results(steps: int,low: int, high: int, average: int, games_played: int, total_steps: int):
-    Continue = False
-    while Continue is False:
+def results(steps: int,low: int, high: int, average: int, games_played: int, total_steps: int, time: int):
+    while True:
         screen.fill(BLACK)
         average = total_steps/games_played
         current_steps = steps
@@ -89,9 +92,15 @@ def results(steps: int,low: int, high: int, average: int, games_played: int, tot
             f"Highest steps taken in a game: {high}",
             f"Lowest steps taken in a game: {low}",
             f"Average steps per game: {int(average)}",
-            f"Total games played: {games_played}",           
-            "Press 1 to play again or ESC to quit"
+            f"Total games played: {games_played}",
         ]
+        # Displays time taken to complete only to '6-8' group       
+        if mode == '6-8':
+            text_lines.append(f"Time played: {round(time/1000,2)} seconds",)           
+            text_lines.append("Press 1 to play again or ESC to quit")
+        else:
+            text_lines.append("Press 1 to play again or ESC to quit")
+            
         y_offset = HEIGHT // 2 - 40 
         
         for line in text_lines:
@@ -115,7 +124,6 @@ def results(steps: int,low: int, high: int, average: int, games_played: int, tot
 running = True
 font = pygame.font.SysFont(None, 55)
 controls_font = pygame.font.SysFont(None, 30)
-win_time = None
 low_steps = 9999
 high_steps = 0 
 steps_average = 0 
@@ -266,7 +274,8 @@ while running:
         if not found_each_other:
             win_sound.play()
             found_each_other = True
-            win_time = pygame.time.get_ticks()
+            win_time = pygame.time.get_ticks() - win_time
+           
         text_string = (f"You found each other! Move Count: {move_count}")
         text = font.render(text_string, True, BLACK)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
@@ -275,12 +284,12 @@ while running:
         screen.blit(text, text_rect)
         pygame.display.flip()
         pygame.time.delay(3000)
-        # if pygame.time.get_ticks() - win_time > 3000:
+        
         games_played += 1
         total_steps += move_count
-        low_steps, high_steps, steps_average, running = results(move_count,low_steps, high_steps, steps_average, games_played, total_steps)
+        low_steps, high_steps, steps_average, running = results(move_count,low_steps, high_steps, steps_average, games_played, total_steps, win_time)
+        
         reset_game()  # Reset game
-        win_time = None  # Reset win_time tracker
         found_each_other = False  # Reset game state
 
     pygame.display.flip()
